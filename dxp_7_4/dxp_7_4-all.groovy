@@ -589,9 +589,9 @@ String expandoTableDetails = "ExpandoClassName, ExpandoColumnsCount";
 List<ExpandoTable> expandoTables =
         ExpandoTableLocalServiceUtil.getExpandoTables(QueryUtil.ALL_POS, QueryUtil.ALL_POS);
 
-for (e in  expandoTables) {
-    String expandoClassName =
-            ClassNameLocalServiceUtil.fetchByClassNameId(e.getClassNameId()).getClassName();
+for (e in expandoTables) {
+
+    String expandoClassName = ClassNameLocalServiceUtil.fetchClassName(e.getClassNameId())?.getClassName() ?: "<unresolved classNameId=${e.getClassNameId()}>"
 
     ExpandoBridge expandoBridge =
             ExpandoBridgeFactoryUtil.getExpandoBridge(CompanyThreadLocal.getCompanyId(), expandoClassName, 0L);
