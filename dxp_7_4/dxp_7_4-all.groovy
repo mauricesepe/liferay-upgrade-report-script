@@ -654,7 +654,6 @@ def invoke__3_database_info_groovy(Map<String, Object> uasContext) {
 try {
     Connection connection = null;
     ResultSet rs = null;
-    PreparedStatement ps = null;
 
     DB db = DBManagerUtil.getDB();
 
@@ -690,16 +689,17 @@ try {
                 continue;
             }
 
-            ResultSet rs2 = null;
+            PreparedStatement countPs = null;
+            ResultSet countRs = null;
 
             try {
-                ps = connection.prepareStatement(
+                countPs = connection.prepareStatement(
                     "select count(*) from " + tableName);
 
-                rs2 = ps.executeQuery();
+                countRs = countPs.executeQuery();
 
-                if (rs2.next()) {
-                    tables.add(new TableInfo(tableName, rs2.getInt(1)));
+                if (countRs.next()) {
+                    tables.add(new TableInfo(tableName, countRs.getInt(1)));
                 }
             }
             catch (Exception e) {
@@ -707,7 +707,8 @@ try {
                     "Unable to recover data from " + tableName);
             }
             finally {
-                DataAccess.cleanUp(rs2);
+                try { countRs?.close(); } catch (Exception ignore) { }
+                try { countPs?.close(); } catch (Exception ignore) { }
             }
         }
 
@@ -720,11 +721,11 @@ try {
             tableDetails <<= "\n";
         }
 
-        println UASUtils.toCSVLine('data_tables_count', "${tables.size}", "");
+        println UASUtils.toCSVLine('data_tables_count', "${tables.size()}", "");
         println UASUtils.toCSVLine('data_tables_info', "", "${tableDetails.toString()}");
     }
     finally {
-        DataAccess.cleanUp(connection, ps, rs);
+        DataAccess.cleanUp(connection, null, rs);
     }
 
     println "";
