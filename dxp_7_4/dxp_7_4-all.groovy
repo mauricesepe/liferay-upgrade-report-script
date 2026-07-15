@@ -769,6 +769,7 @@ import com.liferay.portal.kernel.xml.Document
 import com.liferay.portal.kernel.xml.SAXReaderUtil
 import com.liferay.portal.kernel.zip.ZipFileUtil
 import com.liferay.portal.plugin.PluginPackageUtil
+import com.liferay.portal.util.PropsUtil
 import com.liferay.portal.util.PropsValues
 import org.osgi.framework.Bundle
 import org.osgi.framework.BundleContext
@@ -796,6 +797,7 @@ def invoke__4_custom_code_groovy(Map<String, Object> uasContext) {
 //__GRADLE_COMMENT__ import com.liferay.portal.kernel.xml.SAXReaderUtil
 //__GRADLE_COMMENT__ import com.liferay.portal.kernel.zip.ZipFileUtil
 //__GRADLE_COMMENT__ import com.liferay.portal.plugin.PluginPackageUtil
+//__GRADLE_COMMENT__ import com.liferay.portal.util.PropsUtil
 //__GRADLE_COMMENT__ import com.liferay.portal.util.PropsValues
 //__GRADLE_COMMENT__ import org.osgi.framework.Bundle
 //__GRADLE_COMMENT__ import org.osgi.framework.BundleContext
@@ -813,6 +815,38 @@ String _PROPS_VALUES_MODULE_FRAMEWORK_MODULES_DIR =
         PropsValues.MODULE_FRAMEWORK_MODULES_DIR
 String _PROPS_VALUES_MODULE_FRAMEWORK_WAR_DIR =
         PropsValues.MODULE_FRAMEWORK_WAR_DIR
+
+String _AUTO_DEPLOY_DEST_DIR = { ->
+    try {
+        return DeployUtil.getAutoDeployDestDir()
+    } catch (MissingMethodException e) {
+        uasUtils.debug "DeployUtil.getAutoDeployDestDir() does not exist in this version (removed in LPS-143548), using fallbacks"
+    }
+
+    String autoDeployDestDirProperty = PropsUtil.get('auto.deploy.dest.dir')
+    if (autoDeployDestDirProperty) {
+        return autoDeployDestDirProperty
+    }
+
+    try {
+        String portalWebDirParent = new File(PortalUtil.getPortalWebDir()).getParent()
+
+        if (portalWebDirParent) {
+            return portalWebDirParent
+        }
+    } catch (MissingMethodException e) {
+        uasUtils.debug "PortalUtil.getPortalWebDir() does not exist in this version, using fallbacks"
+    }
+
+    String catalinaBase = System.getProperty('catalina.base')
+    if (catalinaBase) {
+        return new File(catalinaBase, 'webapps').absolutePath
+    }
+
+    return '__uas_unresolvable_auto_deploy_dest_dir__'
+}()
+
+uasUtils.debugCSVLine '_AUTO_DEPLOY_DEST_DIR', _AUTO_DEPLOY_DEST_DIR
 
 // LayoutTemplateLocalServiceUtil
 def _LayoutTemplateLocalServiceUtil_getLangType = { LayoutTemplate it ->
@@ -883,7 +917,7 @@ def portletPluginsWithHooks = allUniqueInstalledPlugins.findAll {
 
     // since 7.0, the .war is _not_ (deployed as a directory) in tomcat/webapps, but stays (as a .war file) in 'osgi/war'
 
-    File warAppServerAutoDeployPath = new File(DeployUtil.getAutoDeployDestDir(), contextName)
+    File warAppServerAutoDeployPath = new File(_AUTO_DEPLOY_DEST_DIR, contextName)
     File warOsgiPath = new File(_PROPS_VALUES_MODULE_FRAMEWORK_WAR_DIR, "${contextName}.war")
 
     File contextDirOrFile
@@ -1114,7 +1148,7 @@ Map<String, String> hookContextToLiferayHookXmlContent = customHookPlugins.colle
     def contextName = it.context
 
     // TODO app server might not explode the .wars (into directories) and keep them as .war in auto-deploy dir
-    File warAppServerAutoDeployPath = new File(DeployUtil.getAutoDeployDestDir(), contextName)
+    File warAppServerAutoDeployPath = new File(_AUTO_DEPLOY_DEST_DIR, contextName)
     File warOsgiPath = new File(_PROPS_VALUES_MODULE_FRAMEWORK_WAR_DIR, "${contextName}.war")
 
     String liferayHookXmlContent
